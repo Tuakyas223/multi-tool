@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Загрузить Комикс</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <header>
+        <nav>
+            <a href="/">Главная</a>
+            <a href="/create">Создать комикс</a>
+        </nav>
+    </header>
+
+    <h1>Загрузить Комикс</h1>
+    <form id="upload-comic-form" action="/upload_comic" method="POST" enctype="multipart/form-data">
+        <label for="title">Название комикса:</label>
+        <input type="text" id="title" name="title" required><br><br>
+        
+        <label for="author">Автор:</label>
+        <input type="text" id="author" name="author" required><br><br>
+        
+        <label for="image-files">Изображения комикса (выберите несколько):</label>
+        <input type="file" id="image-files" name="images" accept="image/*" multiple required><br><br>
+        
+        <!-- Секция для предпросмотра и перемещения изображений -->
+        <div id="image-preview-container"></div><br>
+        
+        <div class="captcha-container">
+            <img id="captcha-img" src="/captcha" alt="Captcha" width="220" height="80">
+            <br><br>
+            <input type="text" name="captcha_user_input" placeholder="Введите код с картинки" required style="padding:8px; font-size:18px; width:180px; text-align:center; text-transform:uppercase;">
+            <input type="hidden" name="captcha_id" id="captcha-id">
+            <button type="button" onclick="refreshCaptcha()">Обновить капчу</button>
+        </div>
+
+        <button type="submit">Загрузить</button>
+    </form>
+
+    <div id="result"></div>
+
+    <script>
+        const form = document.getElementById('upload-comic-form');
+        const result = document.getElementById('result');
+        const captchaImg = document.getElementById('captcha-img');
+        const captchaIdInput = document.getElementById('captcha-id');
+        const imageFilesInput = document.getElementById('image-files');
+        const imagePreviewContainer = document.getElementById('image-preview-container');
+
+        // Функция для обновления капчи
+        async function refreshCaptcha() {
+            try {
+                const response = await fetch('/captcha/data');
+                if (!response.ok) throw new Error('Captcha fetch failed');
+
+                const data = await response.json();
+
+                captchaIdInput.value = data.captcha_id;
+                captchaImg.src = data.image;
+            } catch (err) {
+                console.error('Captcha refresh failed', err);
+                result.textContent = 'Ошибка загрузки капчи';
+                result.className = 'error';
+            }
+        }
+
+        // Функция для предпросмотра изображений
+        imageFilesInput.addEventListener('change', function(event) {
+            imagePreviewContainer.innerHTML = '';  // Очистить контейнер перед добавлением новых изображений
+            const files = event.target.files;
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+                const reader = new FileReader();
+                
+                reader.onload = function(e) {
+                    const imgContainer = document.createElement('div');
+                    imgContainer.classList.add('image-item');
+                    imgContainer.dataset.index = i;  // Сохраняем индекс для манипуляций
+
+                    const img = document.createElement('img');
+                    img.src = e.target.result;
+                    img.style.maxWidth = '150px';
+                    img.style.marginRight = '10px';
+                    img.style.marginBottom = '10px';
+
+                    const moveUpBtn = document.createElement('button');
+                    moveUpBtn.textContent = '↑';
+                    moveUpBtn.classList.add('move-btn');
+                    moveUpBtn.onclick = () => moveImage(i, 'up');
+
+                    const moveDownBtn = document.createElement('button');
+                    moveDownBtn.textContent = '↓';
+                    moveDownBtn.classList.add('move-btn');
+                    moveDownBtn.onclick = () => moveImage(i, 'down');
+
+                    imgContainer.appendChild(img);
+                    imgContainer.appendChild(moveUpBtn);
+                    imgContainer.appendChild(moveDownBtn);
+
+                    imagePreviewContainer.appendChild(imgContainer);
+                };
+                
+                reader.readAsDataURL(file);
+            }
+        });
+
+        // Функция для перемещения изображений
+        function moveImage(index, direction) {
+            const images = Array.from(imagePreviewContainer.children);
+            const currentImage = images[index];
+            const sibling = direction === 'up' ? currentImage.previousElementSibling : currentImage.nextElementSibling;
+
+            if (sibling) {
+                if (direction === 'up') {
+                    imagePreviewContainer.insertBefore(currentImage, sibling);
+                } else {
+                    imagePreviewContainer.insertBefore(sibling, currentImage);
+                }
+            }
+        }
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            result.textContent = '';
+            result.className = '';
+
+            const formData = new FormData(form);
+
+            try {
+                const res = await fetch('/upload_comic', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await res.json();
+
+                if (data.message === 'Comic uploaded successfully!') {
+                    result.textContent = 'Комикс загружен успешно!';
+                    result.className = 'success';
+                    form.reset();
+                    refreshCaptcha();
+                } else {
+                    result.textContent = 'Ошибка загрузки';
+                    result.className = 'error';
+                    refreshCaptcha();
+                }
+            } catch (err) {
+                result.textContent = 'Ошибка соединения';
+                result.className = 'error';
+            }
+        });
+
+        window.onload = refreshCaptcha;
+    </script>
+</body>
+</html>

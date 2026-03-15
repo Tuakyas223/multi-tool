@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Imgur - Загрузка изображений</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+
+    <h1>IMGUR</h1>
+
+    <div class="image-grid" id="image-grid">
+    </div>
+
+    <button id="open-upload-modal" class="upload-btn">Загрузить изображение</button>
+
+    <!-- Всплывающее окно для загрузки -->
+    <div id="upload-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn" id="close-upload-modal">&times;</span>
+            <h2>Загрузить изображение</h2>
+            <form id="upload-form" action="/upload_image" method="POST" enctype="multipart/form-data">
+                <label for="image-file">Выберите изображение:</label>
+                <input type="file" id="image-file" name="image" accept="image/*" required><br><br>
+                
+                <!-- Секция предпросмотра изображения -->
+                <div id="image-preview-container"></div><br>
+
+                <!-- Капча -->
+                <div class="captcha-container">
+                    <img id="captcha-img" src="/captcha" alt="Captcha" width="220" height="80">
+                    <br><br>
+                    <input type="text" name="captcha_user_input" placeholder="Введите код с картинки" required>
+                    <input type="hidden" name="captcha_id" id="captcha-id">
+                    <button type="button" onclick="refreshCaptcha()">Обновить капчу</button>
+                </div>
+
+                <button type="submit">Загрузить</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Модальное окно для просмотра увеличенного изображения -->
+    <div id="view-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn" id="close-view-modal">&times;</span>
+            <img id="view-img" src="" alt="Увеличенное изображение">
+        </div>
+    </div>
+
+    <div id="result"></div>
+
+    <script>
+        async function loadImages() {
+            const response = await fetch('/get_images');
+            const images = await response.json();
+
+            const imageGrid = document.getElementById("image-grid");
+            images.forEach(image => {
+                const newImageElement = document.createElement('div');
+                newImageElement.classList.add('image-item');
+                newImageElement.innerHTML = `<img src="/static/images/${image}" alt="Изображение" class="thumbnail">`;
+                imageGrid.appendChild(newImageElement);
+            });
+        }
+
+        const modal = document.getElementById("upload-modal");
+        const openModalBtn = document.getElementById("open-upload-modal");
+        const closeModalBtn = document.getElementById("close-upload-modal");
+
+        openModalBtn.onclick = function() {
+            modal.style.display = "block";
+        }
+
+        closeModalBtn.onclick = function() {
+            modal.style.display = "none";
+        }
+
+        window.onclick = function(event) {
+            if (event.target === modal) {
+                modal.style.display = "none";
+            } else if (event.target === viewModal) {
+                viewModal.style.display = "none";
+            }
+        }
+
+        async function refreshCaptcha() {
+            try {
+                const response = await fetch('/captcha/data');
+                const data = await response.json();
+
+                document.getElementById("captcha-id").value = data.captcha_id;
+                document.getElementById("captcha-img").src = data.image;
+            } catch (err) {
+                console.error('Ошибка при обновлении капчи:', err);
+                document.getElementById("result").textContent = 'Ошибка загрузки капчи';
+                document.getElementById("result").className = 'error';
+            }
+        }
+
+        document.getElementById('image-file').addEventListener('change', function(event) {
+            const previewContainer = document.getElementById('image-preview-container');
+            previewContainer.innerHTML = '';
+            const file = event.target.files[0];
+            const reader = new FileReader();
+            
+            reader.onload = function(e) {
+                const imgContainer = document.createElement('div');
+                imgContainer.classList.add('image-item');
+                const img = document.createElement('img');
+                img.src = e.target.result;
+                img.style.maxWidth = '150px';
+
+                imgContainer.appendChild(img);
+                previewContainer.appendChild(imgContainer);
+            };
+            
+            reader.readAsDataURL(file);
+        });
+
+        document.getElementById('upload-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const result = document.getElementById('result');
+            result.textContent = '';
+            result.className = '';
+
+            const formData = new FormData(e.target);
+
+            try {
+                const res = await fetch('/upload_image', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await res.json();
+
+                if (data.message === 'Image uploaded successfully!') {
+                    result.textContent = 'Изображение загружено успешно!';
+                    result.className = 'success';
+                    modal.style.display = "none"; 
+                    document.getElementById('upload-form').reset();
+                    refreshCaptcha();
+                    const newImageElement = document.createElement('div');
+                    newImageElement.classList.add('image-item');
+                    newImageElement.innerHTML = `<img src="/static/images/${data.filename}" alt="Изображение" class="thumbnail">`;
+                    document.querySelector('.image-grid').appendChild(newImageElement);
+                } else {
+                    result.textContent = 'Ошибка загрузки изображения';
+                    result.className = 'error';
+                    refreshCaptcha();
+                }
+            } catch (err) {
+                result.textContent = 'Ошибка соединения';
+                result.className = 'error';
+            }
+        });
+
+        const viewModal = document.getElementById("view-modal");
+        const viewImg = document.getElementById("view-img");
+
+        document.querySelectorAll('.thumbnail').forEach((img) => {
+            img.onclick = function() {
+                viewImg.src = img.src;
+                viewModal.style.display = "block";
+            }
+        });
+
+        document.getElementById("close-view-modal").onclick = function() {
+            viewModal.style.display = "none";
+        };
+
+        window.onload = function() {
+            refreshCaptcha();
+            loadImages();
+        }
+    </script>
+</body>
+</html>

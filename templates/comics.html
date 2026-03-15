@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ComicsChan - Комиксы</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <header>
+        <nav>
+            <a href="/">Главная</a>
+            <a href="/create">Создать комикс</a>
+        </nav>
+    </header>
+
+    <h1>Последние комиксы</h1>
+
+    <div class="create-comic-button">
+        <a href="/create">
+            <button>Создать новый комикс</button>
+        </a>
+    </div>
+
+    <div class="comic-grid">
+        {% for comic in comics %}
+        <div class="comic-card">
+            <a href="/comic/{{ comic.uuid }}">
+                <div class="comic-card-image">
+                    <img src="/static/comics/{{ comic.uuid }}/0.jpg" alt="Обложка комикса">
+                </div>
+                <div class="comic-card-info">
+                    <h3>{{ comic.title }}</h3>
+                    <p>Автор: {{ comic.author }}</p>
+                    <p>Нажмите для просмотра</p>
+                </div>
+            </a>
+        </div>
+        {% endfor %}
+    </div>
+
+    <div class="pagination">
+        <a href="#">« Назад</a>
+        <a href="#">Вперед »</a>
+    </div>
+</body>
+</html>

@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ metadata.get('Title', 'Комикс') }}</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <header>
+        <nav>
+            <a href="/">Главная</a>
+            <a href="/create">Создать комикс</a>
+        </nav>
+    </header>
+
+    <div class="comic-view-container">
+        <h1>{{ metadata.get('Title', 'Комикс') }}</h1>
+        <h2>Автор: {{ metadata.get('Author', 'Не указан') }}</h2>
+
+        <div class="comic-images-view">
+            {% for image in images %}
+            <img src="/static/comics/{{ comic_id }}/{{ image }}" alt="Комикс">
+            {% endfor %}
+        </div>
+
+        <div class="back-to-home">
+            <a href="/">Вернуться к ленте</a>
+        </div>
+    </div>
+</body>
+</html>
